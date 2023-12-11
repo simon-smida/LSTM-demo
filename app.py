@@ -17,29 +17,49 @@ from model import create_model
 from progress_window import ProgressWindow
 from utils import context_size, generate_training_data, global_training_history, model
 
+# TODO: avoid global variables?
 
 # PyQt5 GUI Class
 class App(QMainWindow):
+    """
+    Main application window for the LSTM Visualization Tool. 
+    This class sets up the GUI and manages user interactions.
+    """
+
+    # Class-level attributes for PyQt signals
     update_progress_signal = pyqtSignal(int)
     update_info_signal = pyqtSignal(dict)
-    
+
     def __init__(self):
+        """
+        Initialize the application window, set up the UI, and prepare the model.
+        """
         super(App, self).__init__()
+
+        # Set the window title
         self.title = 'LSTM Visualization Tool'
-        self.create_initial_model()
+        self.setWindowTitle(self.title)
+
+        # Initialize attributes for model training and UI components
+        self.X, self.y = None, None   # Training data
+        self.training_thread = None   # Thread for model training
+        self.current_epoch = 0        # Current training epoch
+        self.training_event = Event() # Event to manage training control
+        self.context_size = context_size  # Context size for the LSTM model
+        self.is_model_trained = False     # Flag to track if the model is trained
+
+        # Initialize UI components
         self.initUI()
-        self.X, self.y = None, None
-        self.training_thread = None
-        self.current_epoch = 0
-        self.layer_info_labels = []
-        self.training_event = Event()
-        self.context_size = context_size
-        self.progress_window = ProgressWindow()
+        self.layer_info_labels = []  # Labels for layer information
+        self.progress_window = ProgressWindow()  # Window to show training progress
+
+        # Connect signals to slots
         self.update_progress_signal.connect(self.update_progress)
         self.update_info_signal.connect(self.update_training_info)
         self.update_progress_signal.connect(self.update_training_progress)
-        
-        self.is_model_trained = False
+
+        # Create initial model
+        self.create_initial_model()
      
     def initUI(self):
         """ Initialize the GUI """
