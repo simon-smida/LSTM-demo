@@ -143,284 +143,328 @@ class App(QMainWindow):
     #       UI Component Creators
     # ===================================
     def create_input_group(self):
-        """ Create the input group for the GUI """
+        """
+        Create the input group for the GUI.
+        This group allows the user to enter a sequence for processing.
+        """
         input_group = QGroupBox("Input Data")
-        
         input_layout = QFormLayout()
 
-        # Input field for the sequence
         self.input_field = QLineEdit(self)
         self.input_field.textChanged.connect(self.update_original_sequence)
         self.input_field.textChanged.connect(self.check_input_sequence)
         self.input_field.setPlaceholderText("0,1,0,1")
+        input_layout.addRow("Enter Sequence (comma-separated, e.g., 0,1,0,1):", self.input_field)
 
-        input_layout.addRow("<b>Enter Sequence</b> (comma-separated, e.g., <code>0,1,0,1</code>):", self.input_field)
         input_group.setLayout(input_layout)
-        
         return input_group
 
     def create_output_group(self):
-        """ Create the output group for the GUI """
-        
-        output_group = QGroupBox("")
-        
-        # Main horizontal layout
+        """
+        Create the output group for the GUI.
+        This group displays the original and updated sequences, and the prediction result.
+        """
+        output_group = QGroupBox("Output Information")
         main_layout = QHBoxLayout()
 
-        # Vertical layout for labels
         output_layout = QVBoxLayout()
-        self.original_sequence_label = QLabel("<b>Original</b> Sequence: N/A")
-        output_layout.addWidget(self.original_sequence_label)
-        self.updated_sequence_label = QLabel("<b>Updated</b> Sequence: N/A")
-        output_layout.addWidget(self.updated_sequence_label)
+        self.original_sequence_label = QLabel("Original Sequence: N/A")
+        self.updated_sequence_label = QLabel("Updated Sequence: N/A")
         self.prediction_label = QLabel("Prediction will appear here after processing.")
+        output_layout.addWidget(self.original_sequence_label)
+        output_layout.addWidget(self.updated_sequence_label)
         output_layout.addWidget(self.prediction_label)
 
-        # Add vertical layout to the main horizontal layout
         main_layout.addLayout(output_layout)
+        main_layout.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
 
-        # Spacer to push the button to the right
-        spacer = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
-        main_layout.addSpacerItem(spacer)
-
-        # Predict button
-        self.predict_button = QPushButton('Predict', self)
-        self.predict_button.setToolTip("Make a prediction based on the input sequence")
-        self.predict_button.setFont(QFont('Arial', 10, weight=QFont.Bold))
-        self.predict_button.setStyleSheet("background-color: #AEE4F6")
-        self.predict_button.clicked.connect(self.predict_sequence)
-        self.predict_button.setMinimumHeight(50)
-        self.predict_button.setMinimumWidth(100)
-                
-        # Add the button to the main horizontal layout
+        self.predict_button = self.create_predict_button()
         main_layout.addWidget(self.predict_button)
-        # Set the main layout for the output group
         output_group.setLayout(main_layout)
-        
+
         return output_group
 
+    def create_predict_button(self):
+        """ Create the 'Predict' button. """
+        predict_button = QPushButton('Predict', self)
+        predict_button.setToolTip("Make a prediction based on the input sequence")
+        predict_button.setFont(QFont('Arial', 10, weight=QFont.Bold))
+        predict_button.setStyleSheet("background-color: #AEE4F6")
+        predict_button.clicked.connect(self.predict_sequence)
+        predict_button.setMinimumHeight(50)
+        predict_button.setMinimumWidth(100)
+        return predict_button
+
+    # ===================================
     def create_control_buttons(self):
-        """ Create the control buttons for the GUI """
-        control_group = QGroupBox("")
-        main_horizontal_layout = QHBoxLayout()  # Main horizontal layout for buttons and training info
+        """
+        Create the control buttons for the GUI.
+        Includes buttons for starting, pausing, continuing, and resetting training.
+        """
+        control_group = QGroupBox("Training Control")
+        main_horizontal_layout = QHBoxLayout(control_group)
 
-        # Vertical layout for buttons
-        button_group = QGroupBox("Training Control Buttons")
-        # center the group box title
+        button_group = QGroupBox("Control Buttons")
         button_group.setAlignment(Qt.AlignCenter)
-        
         button_layout = QVBoxLayout()
-        
-        # First row of buttons
+
+        # Add training control buttons
+        training_control_layout = self.create_training_control_buttons()
+        button_layout.addLayout(training_control_layout)
+
+        # Add horizontal line
+        line = self.create_horizontal_line()
+        button_layout.addWidget(line)
+
+        # Add progress control button
+        progress_button_layout = self.create_progress_control_buttons()
+        button_layout.addLayout(progress_button_layout)
+
+        button_group.setLayout(button_layout)
+        main_horizontal_layout.addWidget(button_group)
+
+        training_info_group = self.create_training_info_group()
+        main_horizontal_layout.addWidget(training_info_group)
+
+        return control_group
+
+    def create_training_control_buttons(self):
+        """ Create buttons for training control: Start, Reset, Pause, Continue. """
+        layout = QVBoxLayout()
+
+        # First row: Start and Reset buttons
         first_row_layout = QHBoxLayout()
-        # Create the start button bold
-        self.start_button = QPushButton('Start')
-        self.start_button.setFont(QFont('Arial', 8, weight=QFont.Bold))
-        self.start_button.setStyleSheet("background-color: #CADEDB")
-        self.start_button.setToolTip("Start the training process")
-        self.start_button.clicked.connect(self.start_training)
+        self.start_button = self.create_button('Start', 'Start the training process', 'background-color: #CADEDB', self.start_training)
+        self.reset_button = self.create_button('Reset', 'Reset the training process', 'background-color: #F1D7D3', self.reset_training)
         first_row_layout.addWidget(self.start_button)
-
-        self.reset_button = QPushButton('Reset')
-        self.reset_button.setToolTip("Reset the training and clear all data")
-        self.reset_button.setFont(QFont('Arial', 8, weight=QFont.Bold))
-        self.reset_button.setStyleSheet("background-color: #F1D7D3")
-        self.reset_button.clicked.connect(self.reset_training)
         first_row_layout.addWidget(self.reset_button)
-        button_layout.addLayout(first_row_layout)
-        
-        # Second row of buttons
-        second_row_layout = QHBoxLayout()
 
-        self.stop_button = QPushButton('Pause')
-        self.stop_button.setToolTip("Pause the ongoing training")
-        self.stop_button.setStyleSheet("background-color: #FCF4D3")
-        self.stop_button.clicked.connect(self.stop_training)
-        second_row_layout.addWidget(self.stop_button)
-        
-        self.continue_button = QPushButton('Continue')
-        self.continue_button.setToolTip("Continue the paused training")
-        self.continue_button.setStyleSheet("background-color: #FCF4D3")
-        self.continue_button.clicked.connect(self.continue_training)
+        # Second row: Pause and Continue buttons
+        second_row_layout = QHBoxLayout()
+        self.pause_button = self.create_button('Pause', 'Pause the training process', 'background-color: #FCF4D3', self.stop_training)
+        self.continue_button = self.create_button('Continue', 'Continue the training process', 'background-color: #FCF4D3', self.continue_training)
+        second_row_layout.addWidget(self.pause_button)
         second_row_layout.addWidget(self.continue_button)
-        button_layout.addLayout(second_row_layout)
-        
-        # add horizontal line separator
+
+        layout.addLayout(first_row_layout)
+        layout.addLayout(second_row_layout)
+        return layout
+
+    def create_progress_control_buttons(self):
+        """ Create a button for showing training progress. """
+        layout = QHBoxLayout()
+        self.progress_button = self.create_button('Show Training Progress', 'Show training progress', 'background-color: #CADEDB', self.show_progress)
+        layout.addWidget(self.progress_button)
+        return layout
+
+    def create_horizontal_line(self):
+        """ Helper method to create a horizontal line separator. """
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
         line.setFrameShadow(QFrame.Sunken)
-        button_layout.addWidget(line)
-        
-        # Third row of buttons
-        # Horizontal layout for Show Progress Button
-        show_progress_layout = QHBoxLayout()
+        return line
 
-        # Show Progress Button
-        self.progress_button = QPushButton('Show Training Progress')
-        self.progress_button.setStyleSheet("background-color: #CADEDB")
-        self.progress_button.clicked.connect(self.show_progress)
-        show_progress_layout.addWidget(self.progress_button)
-        button_layout.addLayout(show_progress_layout)
-
-        button_group.setLayout(button_layout)  # Set the layout to button_group
-
-        # Add button group to the left side of the main horizontal layout
-        main_horizontal_layout.addWidget(button_group)
-
-        # Vertical layout for training info
-        training_info_layout = QVBoxLayout()
-        training_info_group = self.create_training_info_group()
-        training_info_layout.addWidget(training_info_group)
-
-        # Add training info layout to the right side of the main horizontal layout
-        main_horizontal_layout.addLayout(training_info_layout)
-
-        control_group.setLayout(main_horizontal_layout)
-        return control_group
-
+    # ===================================
     def create_hyperparameter_input_group(self):
+        """
+        Create the hyperparameter input group for the GUI.
+        This group allows the user to set various parameters for model training.
+        """
         hyper_group = QGroupBox("Hyperparameters")
-        # Center the group box title
         hyper_group.setAlignment(Qt.AlignCenter)
         hyper_layout = QFormLayout()
-        
-        # Input field for the number of epochs
-        self.epoch_input = QSpinBox(self)
-        self.epoch_input.setMinimum(1)
-        self.epoch_input.setMaximum(1000)
-        self.epoch_input.setValue(10)
-        hyper_layout.addRow("<b>Number of</b> Training <b>Epochs:</b>", self.epoch_input)
-        
-        # Number of Layers
-        self.num_layers_input = QSpinBox(self)
-        self.num_layers_input.setMinimum(1)
-        self.num_layers_input.setMaximum(9)
+
+        # Epoch input
+        self.epoch_input = self.create_spin_box(1, 1000, 10, "Number of training epochs")
+        hyper_layout.addRow("Number of Training Epochs:", self.epoch_input)
+
+        # Number of Layers input
+        self.num_layers_input = self.create_spin_box(1, 9, context_size, "Number of LSTM layers in the model")
         self.num_layers_input.valueChanged.connect(self.update_network_info_display)
-        hyper_layout.addRow("<b>Number of</b> LSTM <b>Layers:</b>", self.num_layers_input)
+        hyper_layout.addRow("Number of LSTM Layers:", self.num_layers_input)
 
-        # Units Per Layer
-        self.units_per_layer_input = QSpinBox(self)
-        self.units_per_layer_input.setMinimum(1)
-        self.units_per_layer_input.setMaximum(100)
-        self.units_per_layer_input.setValue(3)
+        # Units Per Layer input
+        self.units_per_layer_input = self.create_spin_box(1, 100, 3, "Number of units per LSTM layer")
         self.units_per_layer_input.valueChanged.connect(self.update_network_info_display)
-        hyper_layout.addRow("<b>Units Per Layer:</b>", self.units_per_layer_input)
+        hyper_layout.addRow("Units Per Layer:", self.units_per_layer_input)
 
-        # Learning Rate
-        self.learning_rate_input = QLineEdit(self)
-        self.learning_rate_input.setValidator(QDoubleValidator(0.00001, 1.0, 5))
-        # Set default value
-        self.learning_rate_input.setText('0.1')
-        hyper_layout.addRow("<b>Learning Rate:</b>", self.learning_rate_input)
+        # Learning Rate input
+        self.learning_rate_input = self.create_line_edit('0.1', "Learning rate for the optimizer")
+        hyper_layout.addRow("Learning Rate:", self.learning_rate_input)
 
-        # Optimizer Selection
-        self.optimizer_input = QComboBox(self)
-        self.optimizer_input.addItems(['adam', 'adagrad', 'sgd'])
+        # Optimizer selection
+        self.optimizer_input = self.create_combo_box(['adam', 'adagrad', 'sgd'], "Choice of optimizer for training the model")
         self.optimizer_input.currentIndexChanged.connect(self.update_network_info_display)
-        hyper_layout.addRow("<b>Optimizer:</b>", self.optimizer_input)
+        hyper_layout.addRow("Optimizer:", self.optimizer_input)
 
-        # Context Size
-        self.context_size_input = QSpinBox(self)
-        self.context_size_input.setMinimum(1)
-        self.context_size_input.setMaximum(20)
-        self.context_size_input.setValue(context_size)
-        hyper_layout.addRow("<b>Context Size:</b>", self.context_size_input)
+        # Context Size input
+        self.context_size_input = self.create_spin_box(1, 20, context_size, "Input context size for the LSTM model")
+        hyper_layout.addRow("Context Size:", self.context_size_input)
 
-        # Update Parameters Button
-        self.update_params_button = QPushButton('Update Parameters', self)
-        self.update_params_button.setToolTip("Update the model parameters with these values")
-        self.update_params_button.setStyleSheet("background-color: #AEE4F6")
-        self.update_params_button.clicked.connect(self.update_model)
-        hyper_layout.addRow(self.update_params_button)  
+        # Update Parameters button
+        self.update_params_button = self.create_button("Update Parameters", "Update the model parameters", "background-color: #AEE4F6", self.update_model)
+        hyper_layout.addRow(self.update_params_button)
 
         hyper_group.setLayout(hyper_layout)
         return hyper_group
 
+    def create_spin_box(self, min_val, max_val, default_val, tooltip):
+        """ Helper method to create a QSpinBox with specified properties. """
+        spin_box = QSpinBox(self)
+        spin_box.setMinimum(min_val)
+        spin_box.setMaximum(max_val)
+        spin_box.setValue(default_val)
+        spin_box.setToolTip(tooltip)
+        return spin_box
+
+    def create_line_edit(self, default_text, tooltip):
+        """ Helper method to create a QLineEdit with specified properties. """
+        line_edit = QLineEdit(self)
+        line_edit.setValidator(QDoubleValidator(0.00001, 1.0, 5))
+        line_edit.setText(default_text)
+        line_edit.setToolTip(tooltip)
+        return line_edit
+
+    def create_combo_box(self, items, tooltip):
+        """ Helper method to create a QComboBox with specified items. """
+        combo_box = QComboBox(self)
+        combo_box.addItems(items)
+        combo_box.setToolTip(tooltip)
+        return combo_box
+
+    def create_button(self, text, tooltip, style, on_click):
+        """ Helper method to create a styled QPushButton. """
+        button = QPushButton(text, self)
+        button.setToolTip(tooltip)
+        button.setStyleSheet(style)
+        button.clicked.connect(on_click)
+        return button
+    # ===================================
+
     def create_network_info_group(self):
-        """ Create the network information group for the GUI """
-        global model
-
+        """ Create the network information group for the GUI. """
         network_info_group = QGroupBox("Network Information")
-        # Center the group box title
         network_info_group.setAlignment(Qt.AlignCenter)
-        self.network_info_layout = QVBoxLayout()  # Set this as the primary layout for the group
+        self.network_info_layout = QVBoxLayout()
 
-        # Add the network type
-        self.network_type_label = QLabel(f"<b>Network Type:</b> LSTM - {model.__class__.__name__}")
+        self.add_model_type_label()
+        self.add_model_params_label()
+        self.add_optimizer_info_label()
+        self.add_loss_info_label()
+
+        # Call add_layer_info_labels with the number of layers
+        num_layers = len(model.layers) if model else 0
+        self.add_layer_info_labels(num_layers)
+
+        self.add_visualize_model_button()
+        network_info_group.setLayout(self.network_info_layout)
+        return network_info_group
+    
+    def add_model_type_label(self):
+        # Dynamically retrieve model type if possible
+        model_type = model.__class__.__name__ if model else "N/A"
+        self.network_type_label = QLabel(f"<b>Network Type:</b> LSTM - {model_type}")
         self.network_info_layout.addWidget(self.network_type_label)
-        
-        # Add the total number of parameters
-        self.network_params_label = QLabel(f"<b>Total Parameters:</b> <code>{model.count_params()}</code>")
+
+    def add_model_params_label(self):
+        """ Add the model parameters label to the network information group. """
+        model_params = model.count_params() if model else "N/A"
+        self.network_params_label = QLabel(f"<b>Total Parameters:</b> <code>{model_params}</code>")
         self.network_info_layout.addWidget(self.network_params_label)
-
-        self.optimizer_info = QLabel(f"<b>Optimizer:</b> <code>{model.optimizer.__class__.__name__}</code>")
-        self.loss_info = QLabel("<b>Loss Function:</b> <code>binary_crossentropy</code>")
+        
+    def add_optimizer_info_label(self):
+        """ Add the optimizer information label to the network information group. """
+        optimizer = model.optimizer.__class__.__name__ if model else "N/A"
+        self.optimizer_info = QLabel(f"<b>Optimizer:</b> <code>{optimizer}</code>")
         self.network_info_layout.addWidget(self.optimizer_info)
+        
+    def add_loss_info_label(self):
+        """ Add the loss information label to the network information group. """
+        self.loss_info = QLabel("<b>Loss Function:</b> <code>binary_crossentropy</code>")
         self.network_info_layout.addWidget(self.loss_info)
-
+        
+    def add_layer_info_labels(self, num_layers):
+        """ Add the layer information labels to the network information group. """
         layers_info = QLabel(f"<b>Layers:</b>")
         self.network_info_layout.addWidget(layers_info)
-        # Add the number of layers
-        self.layer_info_labels = []
-        for i, layer in enumerate(model.layers):
-            layer_info = QLabel(f"-- Layer {i+1}: <code>{type(layer).__name__}</code>, "
-                                f"Units: <code>{layer.units if hasattr(layer, 'units') else 'N/A'}</code>, "
-                                f"Activation: <code>{layer.activation.__name__ if hasattr(layer, 'activation') else 'N/A'}</code>")
-            self.network_info_layout.addWidget(layer_info)
-            self.layer_info_labels.append(layer_info)
 
-        # Button to visualize the model
-        self.visualize_model_button = QPushButton('Show Model Architecture', self)
-        self.visualize_model_button.setStyleSheet("background-color: #CADEDB")
-        self.visualize_model_button.clicked.connect(self.visualize_model)
-        self.visualize_model_button.setToolTip("Click to view the structure of the LSTM model")
+        for i in range(num_layers):
+            # Retrieve layer-specific information if available
+            layer_info_text = "Layer information not available"
+            if model and i < len(model.layers):
+                layer = model.layers[i]
+                units = layer.units if hasattr(layer, 'units') else 'N/A'
+                activation = layer.activation.__name__ if hasattr(layer, 'activation') else 'N/A'
+                layer_info_text = f"-- Layer {i + 1}: <code>{type(layer).__name__}</code>, Units: <code>{units}</code>, Activation: <code>{activation}</code>"
+
+            layer_info = QLabel(layer_info_text)
+            self.network_info_layout.addWidget(layer_info)
+    
+    def add_visualize_model_button(self):
+        """ Add the 'Visualize Model' button to the network information group. """
+        self.visualize_model_button = self.create_button('Show Model Architecture', 'Show the model architecture', 'background-color: #CADEDB', self.show_model_architecture)
+        self.visualize_model_button.clicked.connect(self.show_model_architecture)
         self.network_info_layout.addWidget(self.visualize_model_button)
 
-        network_info_group.setLayout(self.network_info_layout)  # Set the layout to the group
-
-        return network_info_group
-
+    def show_model_architecture(self):
+        """ Display the model architecture in a new window. """
+        if model is None:
+            QMessageBox.warning(self, 'Model Untrained', 'Please train the model before visualizing.')
+            return
+        plot_model(model, to_file='model.png', show_shapes=True)
+        pixmap = QPixmap('model.png')
+        self.model_architecture_window = QDialog()
+        self.model_architecture_window.setWindowTitle("Model Architecture")
+        self.model_architecture_window.resize(pixmap.width(), pixmap.height())
+        self.model_architecture_window.label = QLabel(self.model_architecture_window)
+        self.model_architecture_window.label.setPixmap(pixmap)
+        self.model_architecture_window.label.show()
+        self.model_architecture_window.exec_()
+    
+    # ===================================
     def create_training_info_group(self):
-        """ Create the training information group for the GUI """
-        
+        """
+        Create the training information group for the GUI.
+        Displays the current status of model training, including progress and metrics.
+        """
         training_info_group = QGroupBox("Training Information")
-        # Center the group box title
         training_info_group.setAlignment(Qt.AlignCenter)
         training_info_layout = QVBoxLayout()
 
         self.train_status_label = QLabel("<b>Status:</b> Model untrained")
         training_info_layout.addWidget(self.train_status_label)
-        
-        # Progress Bar
-        self.training_progress_bar = QProgressBar()
-        #self.training_progress_bar.setMinimumWidth(300)
-        self.training_progress_bar.setValue(0)  # Initially set to 0%
+
+        self.training_progress_bar = self.create_progress_bar()
         training_info_layout.addWidget(self.training_progress_bar)
-        
-        # Add horizontal line separator
-        line = QFrame()
-        line.setFrameShape(QFrame.HLine)
-        line.setFrameShadow(QFrame.Sunken)
-        training_info_layout.addWidget(line)
+
+        training_info_layout.addWidget(self.create_horizontal_line())
 
         self.epoch_label = QLabel("<b>Epoch:</b> N/A")
-        training_info_layout.addWidget(self.epoch_label)
-        
         self.loss_label = QLabel("<b>Loss:</b> N/A")
-        training_info_layout.addWidget(self.loss_label)
-        
         self.accuracy_label = QLabel("<b>Accuracy:</b> N/A")
+        training_info_layout.addWidget(self.epoch_label)
+        training_info_layout.addWidget(self.loss_label)
         training_info_layout.addWidget(self.accuracy_label)
-        
+
         training_info_group.setLayout(training_info_layout)
         return training_info_group
-    
+
+    def create_progress_bar(self):
+        """ Helper method to create a progress bar. """
+        progress_bar = QProgressBar()
+        progress_bar.setValue(0)
+        return progress_bar
+
+    # ===================================
     def create_combined_info_group(self):
-        """ Create a group box combining network information and hyperparameters. """
+        """
+        Create a combined group box for network information and hyperparameters.
+        Helps in organizing the UI layout efficiently.
+        """
+        combined_group = QGroupBox("")
         combined_info_layout = QHBoxLayout()
         combined_info_layout.addWidget(self.create_network_info_group())
         combined_info_layout.addWidget(self.create_hyperparameter_input_group())
-        combined_group = QGroupBox("")
         combined_group.setLayout(combined_info_layout)
         return combined_group
 
@@ -428,43 +472,49 @@ class App(QMainWindow):
     #       Model-Related Methods
     # ===================================
     def create_initial_model(self):
-        """ Create the initial model with default parameters """
-        global model
-        # Default hyperparameters
-        num_layers = 1
-        units_per_layer = 3
-        learning_rate = 0.1
-        optimizer = 'adam'
-        loss = 'binary_crossentropy'
-        self.context_size = context_size  # Update this if you have a default value
+        """ Create the initial model with default parameters. """
+        # Set default hyperparameters
+        default_num_layers = 1
+        default_units_per_layer = 3
+        default_learning_rate = 0.1
+        default_optimizer = 'adam'
 
-        model = create_model(num_layers=num_layers, 
-                             units_per_layer=units_per_layer, 
-                             learning_rate=learning_rate, 
-                             optimizer=optimizer, 
-                             loss=loss)
-        model.build(input_shape=(1, self.context_size, 1))
-    
-    def update_model(self):
-        """ Update the model based on the hyperparameter inputs """
-        try:
-            learning_rate = float(self.learning_rate_input.text())
-        except ValueError:
-            QMessageBox.warning(self, 'Invalid Input', 'Please enter a valid learning rate.')
-            return
-        num_layers = self.num_layers_input.value()
-        units_per_layer = self.units_per_layer_input.value()
-        learning_rate = float(self.learning_rate_input.text())
-        optimizer = self.optimizer_input.currentText()
-        global model
-        model = create_model(num_layers=num_layers, units_per_layer=units_per_layer,
-                             learning_rate=learning_rate, optimizer=optimizer,
-                             loss='binary_crossentropy')
-        model.build(input_shape=(1, self.context_size, 1))        
+        # Build the initial model
+        self.build_model(default_num_layers, default_units_per_layer, 
+                        default_learning_rate, default_optimizer)
+
+        # Update UI with initial model info
         self.update_network_info_group()
-        # Set status
-        self.status_label.setText("<b>Status:</b> Model updated")
-    
+        self.status_label.setText("<b>Status:</b> Initial model created")
+
+    def build_model(self, num_layers, units_per_layer, learning_rate, optimizer):
+        """ Build the LSTM model with the given hyperparameters. """
+        global model
+        model = create_model(num_layers=num_layers, 
+                            units_per_layer=units_per_layer, 
+                            learning_rate=learning_rate, 
+                            optimizer=optimizer, 
+                            loss='binary_crossentropy')
+        model.build(input_shape=(1, self.context_size, 1))
+
+    def update_model(self):
+        """ Update the model based on the hyperparameter inputs. """
+        try:
+            num_layers = self.num_layers_input.value()
+            units_per_layer = self.units_per_layer_input.value()
+            learning_rate = float(self.learning_rate_input.text())
+            optimizer = self.optimizer_input.currentText()
+
+            # Build model with new parameters
+            self.build_model(num_layers, units_per_layer, learning_rate, optimizer)
+
+            # Update UI and provide feedback
+            self.update_network_info_group()
+            self.status_label.setText("<b>Status:</b> Model updated successfully")
+        except ValueError as e:
+            QMessageBox.warning(self, 'Invalid Input', f'Error updating model: {e}')
+
+    # TODO:
     # ===================================
     # Network Information Update Methods
     # ===================================
