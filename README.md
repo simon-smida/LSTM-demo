@@ -15,5 +15,5 @@ Long Short-Term Memory (LSTM) demonstration
 ![](img/demoviz-v2.gif)
 
 ## TODOs
-[] integrate `./others/custom_lstm.py` model
-[] update docs
+[ ] integrate `./others/custom_lstm.py` model\
+[ ] update docs
