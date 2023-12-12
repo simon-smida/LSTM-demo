@@ -415,8 +415,8 @@ class App(QMainWindow):
         if model is None:
             QMessageBox.warning(self, 'Model Untrained', 'Please train the model before visualizing.')
             return
-        plot_model(model, to_file='model.png', show_shapes=True)
-        pixmap = QPixmap('model.png')
+        plot_model(model, to_file='./img/model.png', show_shapes=True)
+        pixmap = QPixmap('./img/model.png')
         self.model_architecture_window = QDialog()
         self.model_architecture_window.setWindowTitle("Model Architecture")
         self.model_architecture_window.resize(pixmap.width(), pixmap.height())
@@ -868,7 +868,7 @@ class App(QMainWindow):
     def visualize_model(self):
         """ Visualize the model: show the architecture"""
         # Save the model plot to a temporary file
-        plot_file = './model_plot.png'
+        plot_file = './img/model_plot.png'
         plot_model(model, to_file=plot_file, show_shapes=True, show_layer_names=True)
 
         # Create a widget to show the image
