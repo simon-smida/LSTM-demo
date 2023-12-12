@@ -15,9 +15,8 @@ from tensorflow.keras.utils import plot_model
 # Local application imports
 from model import create_model
 from progress_window import ProgressWindow
-from utils import context_size, generate_training_data, global_training_history, model
+from utils import generate_training_data, global_training_history, model
 
-# TODO: avoid global variables?
 
 # PyQt5 GUI Class
 class App(QMainWindow):
@@ -45,22 +44,25 @@ class App(QMainWindow):
         self.training_thread = None   # Thread for model training
         self.current_epoch = 0        # Current training epoch
         self.training_event = Event() # Event to manage training control
-        self.context_size = context_size  # Context size for the LSTM model
-        self.is_model_trained = False     # Flag to track if the model is trained
-
-        # Create initial model
-        self.create_initial_model()
+        self.context_size =  2        # Context size for the LSTM model
+        self.is_model_trained = False # Flag to track if the model is trained
+        self.layer_info_labels = []   # Labels for layer information
+        self.progress_window = ProgressWindow()  # Window to show training progress
         
+        # Initialize the network info layout
+        self.network_info_layout = QVBoxLayout()
+
         # Initialize UI components
         self.initUI()
-        self.layer_info_labels = []  # Labels for layer information
-        self.progress_window = ProgressWindow()  # Window to show training progress
+
+        # Create the initial model
+        self.create_initial_model()
 
         # Connect signals to slots
         self.update_progress_signal.connect(self.update_progress)
         self.update_info_signal.connect(self.update_training_info)
         self.update_progress_signal.connect(self.update_training_progress)
-     
+    
     def initUI(self):
         """
         Initialize the GUI components of the application. 
@@ -94,7 +96,7 @@ class App(QMainWindow):
     def init_status_label(self):
         """ Initialize and style the status label. """
         self.status_label = QLabel("<b>Status:</b> Ready (model untrained)")
-        self.status_label.setStyleSheet("padding-top: 5px; padding-bottom: 3px;")
+        self.status_label.setStyleSheet("padding-top: 20px; padding-bottom: 3px;")
         self.status_label.setFont(QFont('Arial', 12))
         self.status_label.setAlignment(Qt.AlignCenter)
 
@@ -154,7 +156,7 @@ class App(QMainWindow):
         self.input_field.textChanged.connect(self.update_original_sequence)
         self.input_field.textChanged.connect(self.check_input_sequence)
         self.input_field.setPlaceholderText("0,1,0,1")
-        input_layout.addRow("Enter Sequence (comma-separated, e.g., 0,1,0,1):", self.input_field)
+        input_layout.addRow("<b>Enter Sequence</b> (comma-separated, e.g., 0,1,0,1):", self.input_field)
 
         input_group.setLayout(input_layout)
         return input_group
@@ -168,8 +170,8 @@ class App(QMainWindow):
         main_layout = QHBoxLayout()
 
         output_layout = QVBoxLayout()
-        self.original_sequence_label = QLabel("Original Sequence: N/A")
-        self.updated_sequence_label = QLabel("Updated Sequence: N/A")
+        self.original_sequence_label = QLabel("<b>Original Sequence:</b> N/A")
+        self.updated_sequence_label = QLabel("<b>Updated Sequence:</b> N/A")
         self.prediction_label = QLabel("Prediction will appear here after processing.")
         output_layout.addWidget(self.original_sequence_label)
         output_layout.addWidget(self.updated_sequence_label)
@@ -276,30 +278,32 @@ class App(QMainWindow):
 
         # Epoch input
         self.epoch_input = self.create_spin_box(1, 1000, 10, "Number of training epochs")
-        hyper_layout.addRow("Number of Training Epochs:", self.epoch_input)
+        hyper_layout.addRow("<b>Number of Epochs:</b>", self.epoch_input)
 
         # Number of Layers input
-        self.num_layers_input = self.create_spin_box(1, 9, context_size, "Number of LSTM layers in the model")
+        self.num_layers_input = self.create_spin_box(1, 9, 1, "Number of LSTM layers")
         self.num_layers_input.valueChanged.connect(self.update_network_info_display)
-        hyper_layout.addRow("Number of LSTM Layers:", self.num_layers_input)
+        hyper_layout.addRow("<b>Number of LSTM Layers:</b>", self.num_layers_input)
 
         # Units Per Layer input
         self.units_per_layer_input = self.create_spin_box(1, 100, 3, "Number of units per LSTM layer")
         self.units_per_layer_input.valueChanged.connect(self.update_network_info_display)
-        hyper_layout.addRow("Units Per Layer:", self.units_per_layer_input)
+        hyper_layout.addRow("<b>Units Per Layer:</b>", self.units_per_layer_input)
 
         # Learning Rate input
         self.learning_rate_input = self.create_line_edit('0.1', "Learning rate for the optimizer")
-        hyper_layout.addRow("Learning Rate:", self.learning_rate_input)
+        hyper_layout.addRow("<b>Learning Rate:</b>", self.learning_rate_input)
 
         # Optimizer selection
         self.optimizer_input = self.create_combo_box(['adam', 'adagrad', 'sgd'], "Choice of optimizer for training the model")
         self.optimizer_input.currentIndexChanged.connect(self.update_network_info_display)
-        hyper_layout.addRow("Optimizer:", self.optimizer_input)
+        hyper_layout.addRow("<b>Optimizer:</b>", self.optimizer_input)
 
         # Context Size input
-        self.context_size_input = self.create_spin_box(1, 20, context_size, "Input context size for the LSTM model")
-        hyper_layout.addRow("Context Size:", self.context_size_input)
+        self.context_size_input = self.create_spin_box(1, 20, self.context_size, "Input context size for the LSTM model")
+        self.context_size = self.context_size_input.value()
+        self.context_size_input.valueChanged.connect(lambda: setattr(self, 'context_size', self.context_size_input.value()))
+        hyper_layout.addRow("<b>Context Size:</b>", self.context_size_input)
 
         # Update Parameters button
         self.update_params_button = self.create_button("Update Parameters", "Update the model parameters", "background-color: #AEE4F6", self.update_model)
@@ -514,48 +518,58 @@ class App(QMainWindow):
         except ValueError as e:
             QMessageBox.warning(self, 'Invalid Input', f'Error updating model: {e}')
 
-    # TODO:
     # ===================================
     # Network Information Update Methods
     # ===================================
-    def update_network_info(self, num_layers, units_per_layer, optimizer, learning_rate):
-        """ Update the network information in the UI. """
+    def update_network_info(self):
+        """ Update the network information in the UI based on the current model. """
         global model
-        if model is None:
+        if not model:
             return
 
-        # Clear existing widgets
+        # Clear existing widgets in the layout
         while self.network_info_layout.count():
             item = self.network_info_layout.takeAt(0)
             widget = item.widget()
-            if widget is not None:
+            if widget:
                 widget.deleteLater()
 
+        # Dynamically retrieve model information
+        model_type = model.__class__.__name__
+        model_params = model.count_params()
+        optimizer = model.optimizer.__class__.__name__ if model.optimizer else "N/A"
+        loss = model.loss if isinstance(model.loss, str) else model.loss.__name__ if model.loss else "N/A"
+
         # Update network type and other labels
-        self.network_type_label = QLabel(f"<b>Network Type:</b> LSTM - {model.__class__.__name__}")
-        self.network_info_layout.addWidget(self.network_type_label)
-
-        self.network_params_label = QLabel(f"<b>Total Parameters:</b> <code>{model.count_params()}</code>")
-        self.network_info_layout.addWidget(self.network_params_label)
-
+        self.network_type_label = QLabel(f"<b>Network Type:</b> LSTM - {model_type}")
+        self.network_params_label = QLabel(f"<b>Total Parameters:</b> <code>{model_params}</code>")
         self.optimizer_info = QLabel(f"<b>Optimizer:</b> <code>{optimizer}</code>")
-        self.loss_info = QLabel("<b>Loss Function:</b> <code>binary_crossentropy</code>")
+        self.loss_info = QLabel(f"<b>Loss Function:</b> <code>{loss}</code>")
+
+        # Add labels to layout
+        self.network_info_layout.addWidget(self.network_type_label)
+        self.network_info_layout.addWidget(self.network_params_label)
         self.network_info_layout.addWidget(self.optimizer_info)
         self.network_info_layout.addWidget(self.loss_info)
 
-        # Layer info
-        layers_info = QLabel(f"<b>Layers:</b>")
+        # Layer information
+        layers_info = QLabel("<b>Layers:</b>")
         self.network_info_layout.addWidget(layers_info)
-        for i in range(num_layers):
-            layer_info_text = f"-- Layer {i + 1}: <code>LSTM</code>, Units: <code>{units_per_layer}</code>, Activation: <code>tanh</code>"
+        for i, layer in enumerate(model.layers):
+            layer_type = type(layer).__name__
+            units = layer.units if hasattr(layer, 'units') else 'N/A'
+            activation = layer.activation.__name__ if hasattr(layer, 'activation') else 'N/A'
+            layer_info_text = f"-- Layer {i + 1}: <code>{layer_type}</code>, Units: <code>{units}</code>, Activation: <code>{activation}</code>"
             layer_info = QLabel(layer_info_text)
             self.network_info_layout.addWidget(layer_info)
 
-        # Add Visualize Model button
+        # Visualize Model button
         self.visualize_model_button = QPushButton('Show Model Architecture', self)
-        # [Rest of the code for this button]
+        self.visualize_model_button.setStyleSheet("background-color: #CADEDB")
+        self.visualize_model_button.clicked.connect(self.visualize_model)
+        self.visualize_model_button.setToolTip("Click to view the structure of the LSTM model")
         self.network_info_layout.addWidget(self.visualize_model_button)
-        
+
     def update_network_info_group(self):
         """ Update the network information group in the UI based on the current model. """
         global model
@@ -563,7 +577,7 @@ class App(QMainWindow):
         units_per_layer = model.layers[0].units if hasattr(model.layers[0], 'units') else 'N/A'
         optimizer = model.optimizer.__class__.__name__
         learning_rate = 'N/A'  # Add logic to retrieve learning rate if available
-        self.update_network_info(num_layers, units_per_layer, optimizer, learning_rate)
+        self.update_network_info()
 
     def update_network_info_display(self):
         """ Update the network information display based on user inputs. """
@@ -577,88 +591,157 @@ class App(QMainWindow):
     #       Training Control Methods
     # ===================================
     def start_training(self):
-        """ Start the training when the start button is clicked """
-        if self.training_thread is None or not self.training_thread.is_alive():
-            input_sequence = self.input_field.text()
-            if not input_sequence:
-                QMessageBox.warning(self, 'Invalid Input', 'Please enter a sequence.')
-                return
+        """ Start the training when the start button is clicked. """
+        if self.training_thread and self.training_thread.is_alive():
+            QMessageBox.information(self, 'Training in Progress', 'The model is currently being trained.')
+            return
 
-            # Retrieve hyperparameter values from the input fields
+        # Validate and retrieve the input sequence
+        input_sequence = self.input_field.text().strip()
+        if not self.is_valid_sequence(input_sequence):
+            QMessageBox.warning(self, 'Invalid Input', 'Please enter a valid sequence.')
+            return
+
+        # Retrieve and validate hyperparameters
+        try:
+            num_layers, units_per_layer, learning_rate, optimizer, context_size = self.retrieve_hyperparameters()
+        except ValueError as e:
+            QMessageBox.warning(self, 'Invalid Hyperparameters', str(e))
+            return
+
+        # Prepare the model and training data
+        preparation_result = self.prepare_model_and_data(num_layers, units_per_layer, learning_rate, optimizer, context_size, input_sequence)
+        if not preparation_result:
+            return
+        
+        # Start the training thread
+        self.training_thread = Thread(target=lambda: self.train_and_visualize(epochs=self.epoch_input.value(), batch_size=1))
+        self.training_thread.start()
+        self.train_status_label.setText("<b>Status:</b> Training started...")
+        self.status_label.setText("<b>Status:</b> Training in progress...")
+
+    def is_valid_sequence(self, sequence):
+        """ Validate the input sequence. """
+        # Add specific validation logic here, e.g., check format, length, etc.
+        return bool(sequence)
+
+    def retrieve_hyperparameters(self):
+        """ Retrieve and validate hyperparameters from the UI inputs. """
+        try:
             num_layers = self.num_layers_input.value()
             units_per_layer = self.units_per_layer_input.value()
             learning_rate = float(self.learning_rate_input.text())
             optimizer = self.optimizer_input.currentText()
             context_size = self.context_size_input.value()
+            return num_layers, units_per_layer, learning_rate, optimizer, context_size
+        except ValueError as e:
+            raise ValueError("Error in hyperparameter inputs: " + str(e))
 
-            # Recreate the model with the new hyperparameters
-            global model
-            model = create_model(num_layers=num_layers, 
-                                units_per_layer=units_per_layer, 
-                                learning_rate=learning_rate, 
-                                optimizer=optimizer, 
-                                loss='binary_crossentropy')
-            model.build(input_shape=(1, context_size, 1))
+    def prepare_model_and_data(self, num_layers, units_per_layer, learning_rate, optimizer, context_size, input_sequence):
+        """ Prepare the model and training data. """
+        global model
+        model = create_model(num_layers=num_layers, units_per_layer=units_per_layer, 
+                            learning_rate=learning_rate, optimizer=optimizer, loss='binary_crossentropy')
+        model.build(input_shape=(1, context_size, 1))
 
-            # Prepare training data
+        try:
             self.X, self.y = generate_training_data(input_sequence, context_size)
+        except ValueError as e:
+            QMessageBox.warning(self, 'Invalid Input', str(e))
+            return False  # Indicate that the preparation was not successful
 
-            # Clear previous plots and reset progress bar
-            self.clear_plots()
-            self.training_event.clear()
-            self.training_progress_bar.setValue(0)
+        self.clear_plots()
+        self.training_event.clear()
+        self.training_progress_bar.setValue(0)
+        return True
 
-            # Start the training thread
-            self.training_thread = Thread(target=lambda: self.train_and_visualize(epochs=self.epoch_input.value(), batch_size=1))
-            self.training_thread.start()
-            self.train_status_label.setText("<b>Status:</b> training...")
-            self.status_label.setText("<b>Status:</b> Training...")
        
     def stop_training(self):
-        """ Stop the training when the stop button is clicked """
+        """ Stop the training when the stop button is clicked. """
+        if not self.training_thread or not self.training_thread.is_alive():
+            QMessageBox.information(self, 'Training Not Active', 'There is no active training to pause.')
+            return
+
+        # Check if training is already paused
+        if self.training_event.is_set():
+            QMessageBox.information(self, 'Training Already Paused', 'The training process is already paused.')
+            return
+
+        # Pause the training process
         self.training_event.set()
+
+        # Update the UI to reflect the training's paused status
         self.status_label.setText("<b>Status:</b> Training paused")
-        self.train_status_label.setText("<b>Status:</b> training paused")
+        self.train_status_label.setText("<b>Status:</b> Training has been paused")
 
     def continue_training(self):
-        """ Continue the training when the continue button is clicked """
-        if self.training_thread is not None and not self.training_thread.is_alive():
-            self.training_event.clear()
-            self.training_thread = Thread(target=lambda: self.train_and_visualize(epochs=self.epoch_input.value(), batch_size=1, continue_training=True))
-            self.training_thread.start()
-            self.status_label.setText("<b>Status:</b> Training...")
-            self.train_status_label.setText("<b>Status:</b> training continued")
-            # continue progress bar from the previous value
-            self.training_progress_bar.setValue(self.training_progress_bar.value())
-    
+        """ Continue the paused training when the continue button is clicked. """
+        # Check if there is a training process to continue
+        if not self.training_thread:
+            QMessageBox.warning(self, 'No Training Process', 'There is no training process to continue.')
+            return
+
+        # Check if the training process is already active
+        if self.training_thread.is_alive():
+            QMessageBox.information(self, 'Training In Progress', 'The training is already in progress.')
+            return
+
+        # Check if the training was paused
+        if not self.training_event.is_set():
+            QMessageBox.information(self, 'Training Not Paused', 'The training process is not paused and cannot be continued.')
+            return
+
+        # Continue the paused training process
+        self.training_event.clear()
+        self.training_thread = Thread(target=lambda: self.train_and_visualize(epochs=self.epoch_input.value(), batch_size=1, continue_training=True))
+        self.training_thread.start()
+
+        # Update UI to reflect the resumption of training
+        self.status_label.setText("<b>Status:</b> Training resumed")
+        self.train_status_label.setText("<b>Status:</b> Training has been resumed")
+
     def reset_training(self):
-        """ Reset the training """
+        """ Reset the training and prepare for a new training session. """
+        # Confirm with the user before resetting the training
+        reply = QMessageBox.question(self, 'Reset Training', 
+                                    'Are you sure you want to reset the training? This will clear all current progress.',
+                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+        if reply == QMessageBox.No:
+            return
+
+        # Reset training-related attributes
         global model, global_training_history
         self.is_model_trained = False
         self.current_epoch = 0
-        model = create_model(num_layers=self.num_layers_input.value(), 
-                             units_per_layer=self.units_per_layer_input.value(), 
-                             learning_rate=float(self.learning_rate_input.text()), 
-                             optimizer=self.optimizer_input.currentText(), 
-                             loss='binary_crossentropy')
-        
-        model.build(input_shape=(1, self.context_size, 1))
-        self.training_event.set()
+        self.training_event.clear()  # Ensure the event is cleared if training was paused
+
+        # Rebuild the model with current hyperparameter settings
+        try:
+            self.build_model(self.num_layers_input.value(), 
+                            self.units_per_layer_input.value(), 
+                            float(self.learning_rate_input.text()), 
+                            self.optimizer_input.currentText())
+        except ValueError as e:
+            QMessageBox.warning(self, 'Invalid Hyperparameters', f'Error resetting model: {e}')
+            return
+
+        # Clear training history and reset UI components
+        global_training_history = {'loss': [], 'accuracy': []}
         self.clear_plots()
         self.training_progress_bar.setValue(0)
-        self.progress_window.update_progress(0)
 
-        # Clear training information
-        global_training_history = {'loss': [], 'accuracy': []}
-        self.train_status_label.setText("<b>Status:</b> Model untrained")
-        self.epoch_label.setText("<b>Epoch:</b> N/A")
-        self.loss_label.setText("Loss: N/A")
-        self.accuracy_label.setText("Accuracy: N/A")
-        self.status_label.setText("<b>Status:</b> Ready (training reset)")
-        
-        # Reset training data
-        self.X, self.y = None, None
+        # Update UI status messages
+        self.update_training_status("Model untrained and ready for new training session.")
     
+    def update_training_status(self, message):
+        """ Update training-related status messages on the UI. """
+        self.train_status_label.setText(f"<b>Status:</b> {message}")
+        self.epoch_label.setText("<b>Epoch:</b> N/A")
+        self.loss_label.setText("<b>Loss:</b> N/A")
+        self.accuracy_label.setText("<b>Accuracy:</b> N/A")
+        self.status_label.setText(f"<b>Status:</b> {message}")
+        
     def train_and_visualize(self, epochs=10, batch_size=1, continue_training=False):
         """ Train the model and visualize the training progress """
         global model, global_training_history
@@ -739,41 +822,41 @@ class App(QMainWindow):
             if prediction is not None:
                 self.train_status_label.setText("<b>Status:</b> Predicting...")
                 self.status_label.setText("<b>Status:</b> Predicting...")
-                self.original_sequence_label.setText(f"Original Sequence: <code>{input_sequence}</code>")
-                updated_sequence = input_sequence + ',' + str(prediction)
-                self.updated_sequence_label.setText(f"Updated Sequence: <code>{updated_sequence}</code>")
+                self.original_sequence_label.setText(f"<b>Original Sequence:</b> <code>{input_sequence}</code>")
+                updated_sequence = input_sequence + ',' + f"<span style='color: green; font-weight: bold;'>{prediction}</span>"
+                self.updated_sequence_label.setText(f"<b>Updated Sequence:</b> <code>{updated_sequence}</code>")
                 # Format confidence as a percentage
                 confidence_percent = f"{confidence * 100:.2f}%"
-                self.prediction_label.setText(f"Predicted value for the next step: <code>{prediction}</code> (Confidence: <code>{confidence_percent}</code>)")
+                predicted_value = f"<span style='color: green; font-weight: bold;'>{prediction}</span>"
+                self.prediction_label.setText(f"<b>Predicted Value</b> for the next step: <code>{predicted_value}</code> (Confidence: <code>{confidence_percent}</code>)")
                 self.status_label.setText("<b>Status:</b> Prediction done")
         except ValueError as e:
             QMessageBox.warning(self, 'Invalid Input', str(e))
-            self.original_sequence_label.setText("Original Sequence: N/A")
-            self.updated_sequence_label.setText("Updated Sequence: N/A")
+            self.original_sequence_label.setText("<b>Original Sequence:</b> N/A")
+            self.updated_sequence_label.setText("<b>Updated Sequence:</b> N/A")
 
     def calculate_prediction(self, input_sequence):
         """ Calculate the prediction for the next value in the sequence """
         try:
             data = [int(x) for x in input_sequence.split(',')]
+            
+            # Ensure the input sequence length is at least equal to context_size
             if len(data) < self.context_size:
-                raise ValueError(f"Input sequence [{len(data)}] is too short for the context size [{context_size}].")
+                raise ValueError(f"Input sequence [{len(data)}] is too short for the context size [{self.context_size}].")
+
+            # Use the last context_size elements for prediction
             last_n_elements = data[-self.context_size:]
             processed_input = np.array(last_n_elements).reshape(1, self.context_size, 1)
             prediction_output = model.predict(processed_input).flatten()
             prediction = int(np.round(prediction_output[-1]))
 
-            # Calculate unified confidence score
-            if prediction == 1:
-                confidence = prediction_output[-1]  # Confidence of prediction being 1
-            else:
-                confidence = 1 - prediction_output[-1]  # Confidence of prediction being 0
-
-            confidence_percentage = round(confidence, 2)  # Convert to percentage
-            print(f"Prediction: {prediction}, Confidence: {confidence_percentage}%")
+            confidence = prediction_output[-1] if prediction == 1 else 1 - prediction_output[-1]
+            confidence_percentage = round(confidence, 2)
             return prediction, confidence_percentage
         except ValueError as e:
-            raise e
-    
+            QMessageBox.warning(self, 'Invalid Input', str(e))
+            return None, None
+
     # ===================================
     #           Utility Methods
     # ===================================
@@ -808,11 +891,14 @@ class App(QMainWindow):
     def update_original_sequence(self, text):
         """ Update the original sequence label when the input field is changed"""
         if text:
-            self.original_sequence_label.setText(f"Original Sequence: <code>{text}<code>")
+            self.original_sequence_label.setText(f"<b>Original Sequence:</b> <code>{text}<code>")
+            self.updated_sequence_label.setText("<b>Updated Sequence:</b> N/A")
         else:
-            self.original_sequence_label.setText("Original Sequence: N/A")
+            self.original_sequence_label.setText("<b>Original Sequence:</b> N/A")
+            self.updated_sequence_label.setText("<b>Updated Sequence:</b> N/A")
     
     def check_input_sequence(self):
+        """ Check the input sequence when the input field is changed """
         if not self.input_field.text().strip():
             self.status_label.setText("<b>Status:</b> Please enter a sequence.")
         else:
@@ -822,6 +908,7 @@ class App(QMainWindow):
     #       Model Persistence Methods
     # =================================== 
     def save_model(self):
+        """ Save the model to a file when the save model action is triggered. """
         options = QFileDialog.Options()
         file_name, _ = QFileDialog.getSaveFileName(self, "Save Model", "model.h5",
                                                 "HDF5 Files (*.h5);;All Files (*)", options=options)
@@ -834,6 +921,7 @@ class App(QMainWindow):
                 QMessageBox.critical(self, "Error", f"An error occurred while saving the model: {e}")
 
     def load_model(self):
+        """ Load a model from a file when the load model action is triggered. """
         options = QFileDialog.Options()
         file_name, _ = QFileDialog.getOpenFileName(self, "Load Model", "", 
                                                 "HDF5 Files (*.h5);;All Files (*)", options=options)
