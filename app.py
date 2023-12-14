@@ -282,12 +282,12 @@ class App(QMainWindow):
 
         # Number of Layers input
         self.num_layers_input = self.create_spin_box(1, 9, 1, "Number of LSTM layers")
-        self.num_layers_input.valueChanged.connect(self.update_network_info_display)
+        self.num_layers_input.valueChanged.connect(self.update_network_info)
         hyper_layout.addRow("<b>Number of LSTM Layers:</b>", self.num_layers_input)
 
         # Units Per Layer input
         self.units_per_layer_input = self.create_spin_box(1, 100, 3, "Number of units per LSTM layer")
-        self.units_per_layer_input.valueChanged.connect(self.update_network_info_display)
+        self.units_per_layer_input.valueChanged.connect(self.update_network_info)
         hyper_layout.addRow("<b>Units Per Layer:</b>", self.units_per_layer_input)
 
         # Learning Rate input
@@ -296,7 +296,7 @@ class App(QMainWindow):
 
         # Optimizer selection
         self.optimizer_input = self.create_combo_box(['adam', 'adagrad', 'sgd'], "Choice of optimizer for training the model")
-        self.optimizer_input.currentIndexChanged.connect(self.update_network_info_display)
+        self.optimizer_input.currentIndexChanged.connect(self.update_network_info)
         hyper_layout.addRow("<b>Optimizer:</b>", self.optimizer_input)
 
         # Context Size input
@@ -488,7 +488,7 @@ class App(QMainWindow):
                         default_learning_rate, default_optimizer)
 
         # Update UI with initial model info
-        self.update_network_info_group()
+        self.update_network_info()
         self.status_label.setText("<b>Status:</b> Initial model created")
 
     def build_model(self, num_layers, units_per_layer, learning_rate, optimizer):
@@ -513,7 +513,7 @@ class App(QMainWindow):
             self.build_model(num_layers, units_per_layer, learning_rate, optimizer)
 
             # Update UI and provide feedback
-            self.update_network_info_group()
+            self.update_network_info()
             self.status_label.setText("<b>Status:</b> Model updated successfully")
         except ValueError as e:
             QMessageBox.warning(self, 'Invalid Input', f'Error updating model: {e}')
@@ -569,23 +569,6 @@ class App(QMainWindow):
         self.visualize_model_button.clicked.connect(self.visualize_model)
         self.visualize_model_button.setToolTip("Click to view the structure of the LSTM model")
         self.network_info_layout.addWidget(self.visualize_model_button)
-
-    def update_network_info_group(self):
-        """ Update the network information group in the UI based on the current model. """
-        global model
-        num_layers = len(model.layers)  # Assuming each layer in the model should be counted
-        units_per_layer = model.layers[0].units if hasattr(model.layers[0], 'units') else 'N/A'
-        optimizer = model.optimizer.__class__.__name__
-        learning_rate = 'N/A'  # Add logic to retrieve learning rate if available
-        self.update_network_info()
-
-    def update_network_info_display(self):
-        """ Update the network information display based on user inputs. """
-        num_layers = self.num_layers_input.value()
-        units_per_layer = self.units_per_layer_input.value()
-        optimizer = self.optimizer_input.currentText()
-        learning_rate = self.learning_rate_input.text()
-        self.update_network_info(num_layers, units_per_layer, optimizer, learning_rate)
 
     # ===================================
     #       Training Control Methods
@@ -930,6 +913,6 @@ class App(QMainWindow):
                 global model
                 model = load_model(file_name)
                 QMessageBox.information(self, "Model Loaded", "The model has been loaded successfully.")
-                self.update_network_info_group()  # Update the UI with loaded model information
+                self.update_network_infop()  # Update the UI with loaded model information
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"An error occurred while loading the model: {e}")

@@ -22,8 +22,6 @@ def generate_training_data(input_sequence, context_size, extend=False):
         X.append(data[i:i+context_size])
         y.append(data[i+context_size])
     
-    print(f"Xs [{len(X)}]: {X}")
-    print(f"ys [{len(y)}]: {y}")
     X = np.array(X).reshape(-1, context_size, 1)
     y = np.array(y).reshape(-1, 1)
     
