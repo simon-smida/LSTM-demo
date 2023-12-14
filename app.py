@@ -154,6 +154,7 @@ class App(QMainWindow):
 
         self.input_field = QLineEdit(self)
         self.input_field.textChanged.connect(self.update_original_sequence)
+        self.input_field.textChanged.connect(self.on_input_change)
         self.input_field.textChanged.connect(self.check_input_sequence)
         self.input_field.setPlaceholderText("0,1,0,1")
         input_layout.addRow("<b>Enter Sequence</b> (comma-separated, e.g., 0,1,0,1):", self.input_field)
@@ -843,6 +844,34 @@ class App(QMainWindow):
     # ===================================
     #           Utility Methods
     # ===================================
+    def is_valid_sequence(self, sequence):
+        """ Check if the sequence is a valid comma-separated sequence of zeros and ones. """
+        # Check if the sequence is empty
+        if not sequence:
+            return False
+
+        # Split the sequence by commas and check each part
+        parts = sequence.split(',')
+        for part in parts:
+            if part not in ['0', '1']:
+                return False
+
+        # Ensure the sequence does not end with a comma
+        if sequence.endswith(','):
+            return False
+
+        return True
+    
+    def on_input_change(self):
+        """ Called whenever the text in the input field changes. """
+        input_sequence = self.input_field.text()
+        if not self.is_valid_sequence(input_sequence):
+            # Update the status label to indicate invalid input
+            self.status_label.setText("<b>Status:</b> Invalid input. Enter a comma-separated sequence of zeros and ones.")
+        else:
+            # Update the status label to indicate valid input
+            self.status_label.setText("<b>Status:</b> Valid sequence entered.")
+
     def clear_plots(self):
         """ Clear the plots """
         if hasattr(self, 'progress_window'):
