@@ -3,13 +3,13 @@ from threading import Event, Thread
 
 # Third-party imports
 import numpy as np
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtGui import QFont, QPixmap, QDoubleValidator
 from PyQt5.QtWidgets import (QAction, QComboBox, QDialog, QFileDialog, QFormLayout, QFrame, 
                              QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox, 
                              QMenuBar, QProgressBar, QPushButton, QSizePolicy, QSpacerItem, QSpinBox, 
                              QVBoxLayout, QWidget)
-from tensorflow.keras.models import load_model
+
 from tensorflow.keras.utils import plot_model
 
 # Local application imports
@@ -57,7 +57,7 @@ class App(QMainWindow):
 
         # Create the initial model
         self.create_initial_model()
-
+        
         # Connect signals to slots
         self.update_progress_signal.connect(self.update_progress)
         self.update_info_signal.connect(self.update_training_info)
@@ -478,6 +478,10 @@ class App(QMainWindow):
     # ===================================
     def create_initial_model(self):
         """ Create the initial model with default parameters. """
+        from tensorflow.keras.models import load_model
+        
+        self.status_label.setText('Loading model, please wait...')
+        
         # Set default hyperparameters
         default_num_layers = 1
         default_units_per_layer = 3
