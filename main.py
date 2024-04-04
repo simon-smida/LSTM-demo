@@ -1,3 +1,5 @@
+import config_tf as tf_config  # This ensures TF_CPP_MIN_LOG_LEVEL is set before TF is imported
+
 from PyQt5.QtWidgets import QApplication
 import sys
 from app import App
